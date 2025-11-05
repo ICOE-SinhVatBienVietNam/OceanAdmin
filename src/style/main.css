@@ -1,0 +1,115 @@
+@import "tailwindcss";
+/* @import "leaflet/dist/leaflet.css"; */
+
+@layer base {
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        color: black;
+        font-family: "Inter", sans-serif;
+        font-optical-sizing: auto;
+    }
+
+    html,
+    body {
+        height: 100%;
+        width: 100%;
+    }
+
+    #root {
+        height: 100%;
+        width: 100%;
+        background-color: white;
+    }
+
+    input {
+        background-color: white !important;
+    }
+
+    li {
+        line-height: 1.8 !important;
+    }
+
+    /* Toast */
+    .Toastify__toast-container {
+        z-index: 999999 !important;
+        gap: 5px;
+    }
+    
+    /* ====== Toast Box ====== */
+    .Toastify__toast {
+        width: 80% !important;
+        font-size: 15px !important;
+    }
+
+    /* -------- */
+
+    .btn:hover {
+        filter: brightness(0.9);
+        cursor: grab;
+        transition: all linear 0.2s;
+    }
+
+    .btn:active {
+        filter: brightness(0.85);
+        cursor: grabbing;
+        transition: all linear 0.2s;
+    }
+
+    .mainShadow {
+        box-shadow: 0 0 5px #d3d3d3;
+    }
+
+    .shadowForm {
+        box-shadow: 0 0 10px 1px rgba(0, 0, 0, 0.25);
+    }
+
+    .csScroll::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    .csScroll::-webkit-scrollbar-thumb {
+        background-color: #3e3f46;
+    }
+
+    /* Leaflet */
+    .leaflet-control-attribution {
+        font-size: 8px;
+    }
+
+    /* Custom Pin Marker */
+    .custom-pin-marker.leaflet-marker-icon {
+        background: none;
+        border: none;
+    }
+}
+
+@theme {
+    --color-light-background: ;
+    --color-mainRed: #FF4040;
+    --color-mainRedRGB: rgba(255, 64, 64, 0.2);
+    --color-mainLightBlue: #35A8F6;
+    --color-mainLightBlueRGB: rgba(53, 168, 246, 0.2);
+    --color-mainDarkBlue: #0B5394;
+    --color-mainDark: #3e3f46;
+    --color-lime: #00FF00;
+    --color-gray: #808080;
+    --color-lightGray: #d3d3d3;
+    --color-lighterGray: #f0f0f0;
+
+    --text-csTiny: 8px;
+    --text-csSmall: 10px;
+    --text-csNormal: 12px;
+    --text-csMedium: 14px;
+    --text-csBig: 16px;
+    --text-csLarge: 20px;
+
+    --spacing-mainTwoSidePadding: 20px;
+    --spacing-twoSidePaddingIntroduction: 20px;
+    /* --spacing-topPadding: 40px;
+    --spacing-bottomPadding: 40px; */
+
+    --radius-main: 10px;
+    --radius-small: 5px;
+}
