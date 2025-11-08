@@ -13,10 +13,13 @@
     "@tailwindcss/vite": "^4.1.16",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
+    "@types/recharts": "^1.8.29",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.9.5",
-    "tailwindcss": "^4.1.16"
+    "recharts": "^3.3.0",
+    "tailwindcss": "^4.1.16",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

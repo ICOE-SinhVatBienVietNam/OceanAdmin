@@ -10,8 +10,8 @@ const LoginPage: React.FC = () => {
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('Email:', email);
-        console.log('Password:', password);
+        
+        // Logic
     };
 
     return (
