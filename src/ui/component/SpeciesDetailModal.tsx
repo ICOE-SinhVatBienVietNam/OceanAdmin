@@ -58,14 +58,16 @@ const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({ isOpen, onClose
 
     return (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
-            <div className="bg-white p-8 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
-                <h2 className="text-2xl font-bold mb-6 text-gray-800">Thông tin chi tiết loài: {species.species}</h2>
-                <button
-                    onClick={onClose}
-                    className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-3xl font-semibold"
-                >
-                    &times;
-                </button>
+            <div className="bg-white px-8 pb-8 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
+                <div className='sticky top-0 left-0 h-fit w-full bg-white flex justify-between items-center pt-8 pb-5'>
+                    <h2 className="text-2xl font-bold text-gray-800">{species.species}</h2>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-500 hover:text-gray-800 text-3xl font-semibold"
+                    >
+                        &times;
+                    </button>
+                </div>
 
                 {thumbnailUrl && (
                     <div className="mb-6 flex justify-center">
@@ -77,10 +79,10 @@ const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({ isOpen, onClose
                     {speciesFields
                         .filter(field => field.key !== 'thumbnails')
                         .map(field => (
-                            <div key={field.key} className="flex flex-col">
-                                <p className="text-sm font-medium text-gray-500">{field.label}:</p>
-                                <p className="text-base text-gray-900 break-words">
-                                    {renderFieldValue(field, species[field.key])}
+                            <div key={field.key} className="flex flex-col gap-1.5">
+                                <p className="text-sm font-bold text-black">{field.label}:</p>
+                                <p className="text-csMedium text-gray wrap-break-word px-2.5">
+                                    {renderFieldValue(field, species[field.key]) ? renderFieldValue(field, species[field.key]) : "Không có dữ liệu"}
                                 </p>
                             </div>
                         ))}
@@ -88,10 +90,10 @@ const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({ isOpen, onClose
 
                 <div className="mt-8 flex justify-end">
                     <button
-                        onClick={onClose}
+                        onClick={() => { alert("chưa có chức năng") }}
                         className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300"
                     >
-                        Đóng
+                        Chỉnh sửa
                     </button>
                 </div>
             </div>

@@ -1,32 +1,43 @@
-import React, { useState } from 'react';
-import { SpeciesService } from '../../service/SpeciesService';
+import React, { useEffect, useState } from 'react';
+import { SpeciesDataForPost_type, SpeciesService } from '../../service/SpeciesService';
 import { Species, Thumbnail } from '../page/Database';
+import { useDispatch } from 'react-redux';
+import { setNewSpecies } from '../../redux/reducer/speciesReducer';
+
+const processBar = [
+    "Xử lý dữ liệu",
+    "Đang tải dữ liệu",
+    "Hoàn thành",
+] as const;
+
+type ProcessStep = (typeof processBar)[number];
 
 export interface AddSpeciesModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onAdd: (species: any[]) => void;
 }
 
 // Define an augmented species type for the modal's internal state
-type ProcessedSpecies = Omit<Species, 'id'> & { imagePreviewUrl?: string };
+export type ProcessedSpecies = Omit<Species, 'id'> & { imagePreviewUrl?: string };
 
-const AddSpeciesModal: React.FC<AddSpeciesModalProps> = ({ isOpen, onClose, onAdd }) => {
+const AddSpeciesModal: React.FC<AddSpeciesModalProps> = ({ isOpen, onClose }) => {
     const [processedSpecies, setProcessedSpecies] = useState<ProcessedSpecies[] | null>(null);
+    const [processedImg, setProcessedImg] = useState<File[]>()
     const [fileName, setFileName] = useState<string | null>(null);
     const [unmatchedImages, setUnmatchedImages] = useState<{ name: string; previewUrl: string }[]>([]);
     const [imgFolderName, setImgFolderName] = useState<string | null>(null);
     const [showResults, setShowResults] = useState(false);
 
-    if (!isOpen) {
-        return null;
-    }
+    // Redux
+    const dispatch = useDispatch()
 
     const resetState = () => {
         setProcessedSpecies(null);
         setUnmatchedImages([]);
         setShowResults(false);
+        setFileName(null)
         setImgFolderName(null)
+        setIsProcess(false)
     };
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,10 +64,10 @@ const AddSpeciesModal: React.FC<AddSpeciesModalProps> = ({ isOpen, onClose, onAd
 
         // Match species to images
         speciesCopy.forEach(species => {
-            const cleanSpeciesName = species.species.split('(')[0].trim().toLowerCase();
+            const cleanSpeciesName = species.species.split('(')[0].trim();
             const matchedImage = imageFiles.find(file => {
-                const cleanImageName = file.name.split('.')[0].replace(/_/g, ' ').toLowerCase();
-                return cleanImageName === cleanSpeciesName;
+                const cleanImageName = file.name.replace(".", "").replace("(", "").replace(")", "")
+                return cleanImageName.includes(cleanSpeciesName);
             });
 
             if (matchedImage) {
@@ -75,17 +86,17 @@ const AddSpeciesModal: React.FC<AddSpeciesModalProps> = ({ isOpen, onClose, onAd
             .filter(file => !matchedImageNames.has(file.name))
             .map(file => ({ name: file.name, previewUrl: URL.createObjectURL(file) }));
 
+        if (imageFiles.length > 0 && (processedSpecies && processedSpecies.length > 0)) {
+            dispatch(setNewSpecies({
+                data: processedSpecies,
+            }))
+            setProcessedImg(imageFiles)
+        }
+
         setProcessedSpecies(speciesCopy);
         setUnmatchedImages(newUnmatchedImages);
         setShowResults(true);
         setImgFolderName("Đã nhận hình ảnh")
-    };
-
-    const handleAdd = () => {
-        onAdd(processedSpecies || []);
-        handleClose(); // Close after adding
-        console.log(processedSpecies)
-        console.log(unmatchedImages)
     };
 
     const handleClose = () => {
@@ -106,145 +117,300 @@ const AddSpeciesModal: React.FC<AddSpeciesModalProps> = ({ isOpen, onClose, onAd
     const matchedSpecies = processedSpecies?.filter(s => s.imagePreviewUrl) || [];
     const unmatchedSpecies = processedSpecies?.filter(s => !s.imagePreviewUrl) || [];
 
+    // Upload data
+    const [isProcess, setIsProcess] = useState<boolean>(false)
+    const [currentProcess, setCurrentProcess] = useState<ProcessStep>("Xử lý dữ liệu");
+    const [log, setLog] = useState<string[]>([]);
+
+
+    const handleData = async () => {
+        if (processedSpecies && processedSpecies.length > 0) {
+            const cleanedSpecies = processedSpecies.map(({ imagePreviewUrl, ...rest }) => rest);
+            const dataForPost = cleanedSpecies.map(species => {
+                const cleanSpeciesName = species.species.split('(')[0].trim();
+                // Sửa đổi: Tìm TẤT CẢ các ảnh khớp
+                const matchedImages = processedImg ? processedImg.filter(file => {
+                    const cleanImageName = file.name.replace(/\.(jpg|jpeg|png|gif)$/i, "").replace(/[.()]/g, "");
+                    return cleanImageName.includes(cleanSpeciesName);
+                }) : [];
+                // Sửa đổi: Gán mảng ảnh vào 'images'
+                const speciesData: SpeciesDataForPost_type = {
+                    species,
+                    images: matchedImages
+                };
+                return speciesData;
+            });
+            setCurrentProcess("Đang tải dữ liệu");
+            setLog(prev => [
+                ...prev,
+                `Dữ liệu đã được xử lý.`,
+                "Đang chuẩn bị thêm dữ liệu."
+            ]);
+            await handlePost(dataForPost);
+        }
+    }
+
+    const handlePost = async (speciesData: SpeciesDataForPost_type[]) => {
+        const chunkSize = 20;
+        for (let i = 0; i < speciesData.length; i += chunkSize) {
+            const chunk = speciesData.slice(i, i + chunkSize);
+            const resultChunk = await SpeciesService.addSpeciesData(chunk)
+        }
+        setLog(prev => {
+            return [
+                ...prev,
+                `Đã hoàn thành việc xử lý và chuẩn bị dữ liệu.`,
+                "Đang tải dữ liệu lên hệ thống..."
+            ]
+        })
+        setCurrentProcess("Hoàn thành")
+    }
+
+    const handleAdd = async () => {
+        if (!processedImg || processedImg.length == 0) {
+            const clientConfrim = confirm("Thêm dữ liệu sinh vật mà không có ảnh?")
+            if (!clientConfrim) return
+        }
+
+        setIsProcess(!isProcess)
+        setLog(prev => {
+            return [
+                ...prev,
+                `Đã nhận dữ liệu ${processedSpecies?.length} loài`,
+                "Đang xử lý dữ liệu..."
+            ]
+        })
+        setCurrentProcess("Xử lý dữ liệu")
+        handleData()
+    }
+
+
+    if (!isOpen) {
+        return null;
+    }
+
     return (
         <div className="fixed inset-0 bg-[rgba(0,0,0,0.75)] z-50 flex justify-center items-center p-4">
-            <div className="bg-white rounded-lg shadow-2xl p-8 w-full max-w-6xl max-h-[90vh] flex flex-col">
-                <div className='flex flex-col mb-6'>
-                    <h2 className="text-2xl font-bold text-gray-800">Thêm nhiều loài</h2>
-                    <p className='text-csMedium text-gray'>Chọn lại <b className='text-gray italic'>Thư mục ảnh</b> nếu thay đổi <b className='text-gray italic'>File dữ liệu</b></p>
-                </div>
-
-                <div className="grow overflow-y-auto pr-2">
-                    <div className="grid md:grid-cols-2 gap-8">
-                        {/* Left Panel: Data File Upload */}
-                        <div className="flex flex-col p-6 border rounded-lg bg-gray-50">
-                            <h3 className="text-lg font-semibold mb-4 text-gray-700">1. Tải lên file dữ liệu</h3>
-                            <div className="flex items-center justify-center w-full">
-                                <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-white hover:bg-gray-100 transition-colors">
-                                    {fileName ? (
-                                        <div className='flex flex-col items-center'>
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="size-15 stroke-lime">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                            </svg>
-
-                                            <p className="mb-2 text-sm text-black font-bold">Đã nhận</p>
-                                            <p className="mb-2 text-sm text-gray-500 italic">{fileName}</p>
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
-                                            <svg className="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
-                                                <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5A5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2" />
-                                            </svg>
-                                            <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Bấm để tải lên</span> hoặc kéo thả</p>
-                                            <p className="text-xs text-gray-500">.CSV, .XLSX</p>
-                                        </div>
-                                    )}
-
-                                    <input id="dropzone-file" type="file" className="hidden" onChange={handleFileChange} accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
-                                </label>
-                            </div>
-                        </div>
-
-                        {/* Right Panel: Image Folder Upload */}
-                        <div className={`flex flex-col p-6 border rounded-lg bg-gray-50 ${!processedSpecies ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                            <h3 className="text-lg font-semibold mb-4 text-gray-700">2. Tải lên thư mục ảnh (tùy chọn)</h3>
-                            <div className="flex items-center justify-center w-full">
-                                <label htmlFor="image-folder-input" className={`flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg ${processedSpecies ? 'cursor-pointer bg-white hover:bg-gray-100' : ''} transition-colors`}>
-                                    {imgFolderName ? (
-                                        <div className='flex flex-col items-center'>
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="size-15 stroke-lime">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                            </svg>
-
-                                            <p className="mb-2 text-sm text-gray-500 italic">{imgFolderName}</p>
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
-                                            <svg className="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
-                                                <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M.5 8h19M4 1.5 1 8l3 6.5M16 1.5l3 6.5-3 6.5" />
-                                            </svg>
-                                            <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Chọn thư mục ảnh</span></p>
-                                            <p className="text-xs text-gray-500">Tên ảnh phải khớp với tên khoa học</p>
-                                        </div>
-                                    )}
-
-                                    <input id="image-folder-input" type="file" {...inputFolderProps} className="hidden" onChange={handleImageFolderChange} disabled={!processedSpecies} />
-                                </label>
-                            </div>
-                        </div>
+            {!isProcess ? (
+                <div className="bg-white rounded-lg shadow-2xl p-8 w-full max-w-6xl max-h-[95vh] flex flex-col">
+                    <div className='flex flex-col mb-6'>
+                        <h2 className="text-2xl font-bold text-gray-800">Thêm nhiều loài</h2>
+                        <p className='text-csMedium text-gray'>Chọn lại <b className='text-gray italic'>Thư mục ảnh</b> nếu thay đổi <b className='text-gray italic'>File dữ liệu</b></p>
                     </div>
 
-                    {showResults && (
-                        <div className="mt-8">
-                            <h3 className="text-xl font-bold mb-4 text-gray-800">Kết quả so khớp ảnh</h3>
+                    <div className="grow overflow-y-auto pr-2">
+                        <div className="grid md:grid-cols-2 gap-8">
+                            {/* Left Panel: Data File Upload */}
+                            <div className="h-fit flex flex-col p-6 border-[0.5px] border-lightGray rounded-lg bg-gray-50">
+                                <h3 className="text-lg font-semibold mb-4 text-gray-700">1. Tải lên file dữ liệu</h3>
+                                <div className="flex items-center justify-center w-full">
+                                    <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-40 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-white hover:bg-gray-100 transition-colors">
+                                        {fileName ? (
+                                            <div className='flex flex-col items-center'>
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="size-15 stroke-lime">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                                </svg>
 
-                            {/* Matched Species */}
-                            <div className="p-4 border rounded-lg bg-white mb-6">
-                                <h4 className="font-semibold text-green-700 mb-3">Các loài đã khớp ảnh ({matchedSpecies.length})</h4>
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-60 overflow-y-auto">
-                                    {matchedSpecies.map(s => (
-                                        <div key={s.species} className="flex flex-col items-center text-center border p-2 rounded-md">
-                                            <img src={s.imagePreviewUrl} alt={s.species} className="w-24 h-24 object-cover rounded-md mb-2" />
-                                            <p className="text-xs font-medium text-gray-700">{s.species}</p>
-                                        </div>
-                                    ))}
+                                                <p className="mb-2 text-sm text-black font-bold">Đã nhận</p>
+                                                <p className="mb-2 text-sm text-gray-500 italic">{fileName}</p>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
+                                                <svg className="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                                                    <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5A5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2" />
+                                                </svg>
+                                                <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Bấm để tải lên</span> hoặc kéo thả</p>
+                                                <p className="text-xs text-gray-500">.CSV, .XLSX</p>
+                                            </div>
+                                        )}
+
+                                        <input id="dropzone-file" type="file" className="hidden" onChange={handleFileChange} accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
+                                    </label>
                                 </div>
                             </div>
 
-                            <div className="grid md:grid-cols-2 gap-6">
-                                {/* Unmatched Species */}
-                                <div className="p-4 border rounded-lg bg-white">
-                                    <h4 className="font-semibold text-orange-700 mb-3">{unmatchedSpecies.length == 0 ? "Không nhận được dữ liệu loài" : `Loài chưa có ảnh (${unmatchedSpecies.length})`}</h4>
-                                    <ul className="list-disc list-inside text-sm text-gray-600 max-h-48 overflow-y-auto">
-                                        {unmatchedSpecies.map(s => <li key={s.species}>{s.species}</li>)}
-                                    </ul>
-                                </div>
+                            {/* Right Panel: Image Folder Upload */}
+                            <div className={`h-fit flex flex-col p-6 border-[0.5px] border-lightGray rounded-lg bg-gray-50 ${!processedSpecies ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                <h3 className="text-lg font-semibold mb-4 text-gray-700">2. Tải lên thư mục ảnh (tùy chọn)</h3>
+                                <div className="flex items-center justify-center w-full">
+                                    <label htmlFor="image-folder-input" className={`flex flex-col items-center justify-center w-full h-40 border-2 border-gray-300 border-dashed rounded-lg ${processedSpecies ? 'cursor-pointer bg-white hover:bg-gray-100' : ''} transition-colors`}>
+                                        {imgFolderName ? (
+                                            <div className='flex flex-col items-center'>
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="size-15 stroke-lime">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                                </svg>
 
-                                {/* Unmatched Images */}
-                                <div className="p-4 border rounded-lg bg-white">
-                                    <h4 className="font-semibold text-red-700 mb-3">{unmatchedImages.length == 0 ? "Không có ảnh" : `Ảnh không khớp (${unmatchedImages.length})`}</h4>
-                                    <ul className="list-disc list-inside text-sm text-gray-600 max-h-48 overflow-y-auto">
-                                        {unmatchedImages.map(img => <li key={img.name}>{img.name}</li>)}
-                                    </ul>
+                                                <p className="mb-2 text-sm text-gray-500 italic">{imgFolderName}</p>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
+                                                <svg className="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                                                    <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M.5 8h19M4 1.5 1 8l3 6.5M16 1.5l3 6.5-3 6.5" />
+                                                </svg>
+                                                <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Chọn thư mục ảnh</span></p>
+                                                <p className="text-xs text-gray-500">Tên ảnh phải khớp với tên khoa học</p>
+                                            </div>
+                                        )}
+
+                                        <input id="image-folder-input" type="file" {...inputFolderProps} className="hidden" onChange={handleImageFolderChange} disabled={!processedSpecies} />
+                                    </label>
                                 </div>
                             </div>
                         </div>
-                    )}
+
+                        {showResults && (
+                            <div className="mt-8">
+                                <h3 className="text-xl font-bold mb-4 text-gray-800">Kết quả so khớp ảnh</h3>
+
+                                {/* Matched Species */}
+                                <div className="p-4 border-[0.5px] border-lightGray rounded-lg bg-white mb-6">
+                                    <h4 className="font-semibold text-green-700 mb-3">Các loài đã khớp ảnh ({matchedSpecies.length})</h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-60 overflow-y-auto p-1.5">
+                                        {matchedSpecies.map(s => (
+                                            <div key={s.species} className="flex flex-col items-center text-center mainShadow p-2 rounded-md">
+                                                <img src={s.imagePreviewUrl} alt={s.species} className="w-24 h-24 object-cover rounded-md mb-2" />
+                                                <p className="text-xs font-medium text-gray-700">{s.species}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {unmatchedSpecies.length > 0 && (
+                                    <div className="grid md:grid-cols-2 gap-6">
+                                        {/* Unmatched Species */}
+                                        <div className="p-4 border rounded-lg bg-white">
+                                            <h4 className="font-semibold text-orange-700 mb-3">{unmatchedSpecies.length == 0 ? "Không nhận được dữ liệu loài" : `Loài chưa có ảnh (${unmatchedSpecies.length})`}</h4>
+                                            <ul className="list-disc list-inside text-sm text-gray-600 max-h-48 overflow-y-auto">
+                                                {unmatchedSpecies.map(s => <li key={s.species}>{s.species}</li>)}
+                                            </ul>
+                                        </div>
+
+                                        {/* Unmatched Images */}
+                                        <div className="p-4 border rounded-lg bg-white">
+                                            <h4 className="font-semibold text-red-700 mb-3">{unmatchedImages.length == 0 ? "Không có ảnh" : `Ảnh không khớp (${unmatchedImages.length})`}</h4>
+                                            <ul className="list-disc list-inside text-sm text-gray-600 max-h-48 overflow-y-auto">
+                                                {unmatchedImages.map(img => <li key={img.name}>{img.name}</li>)}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                )}
+
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="flex justify-between items-center gap-4 mt-8 shrink-0">
+                        <div className=''>
+                            <span className='flex items-center gap-2 bg-mainLightBlueRGB px-2.5 py-1.5'>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-5 stroke-mainDarkBlue">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                                </svg>
+
+                                <p className='text-csNormal font-medium text-mainDarkBlue'>Dữ liệu vẫn có thể được thêm vào nếu thiếu hình ảnh (không thêm ảnh)</p>
+                            </span>
+                        </div>
+
+                        <div className='flex items-center gap-2.5'>
+
+                            <button
+                                type="button"
+                                onClick={handleClose}
+                                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-400 transition"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleAdd}
+                                disabled={!processedSpecies}
+                                className="px-6 py-2 bg-blue-500 text-white font-bold rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            >
+                                Thêm loài
+                            </button>
+                        </div>
+                    </div>
                 </div>
+            ) : (
+                <div className="h-fit w-1/3 bg-white p-4 rounded-lg">
+                    {/* --- Progress Bar --- */}
+                    <div className="flex flex-col gap-5 mb-4">
+                        <span className="flex items-center">
+                            {processBar.map((_, index) => {
+                                const isDone = index < processBar.indexOf(currentProcess);
+                                const isCurrent = index === processBar.indexOf(currentProcess);
+                                return (
+                                    <span key={index} className={`${index === processBar.length - 1 ? "w-fit" : "flex-1"} flex items-center`}>
+                                        <span className={`mainShadow h-10 aspect-square flex justify-center items-center rounded-full
+                    ${isDone || currentProcess === "Hoàn thành" ? "bg-mainLightBlue" : isCurrent ? "bg-mainLightBlueRGB" : "bg-gray-200"}`}>
+                                            {isDone || currentProcess === "Hoàn thành" ? (
+                                                // Icon completed
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6 stroke-white">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                                </svg>
+                                            ) : (
+                                                // Icon current step
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                                </svg>
+                                            )}
+                                        </span>
 
-                {/* Modal Footer */}
-                <div className="flex justify-between items-center gap-4 mt-8 shrink-0">
-                    <div className=''>
-                        <span className='flex items-center gap-2 bg-mainLightBlueRGB px-2.5 py-1.5'>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-5 stroke-mainDarkBlue">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
-                            </svg>
+                                        {index < processBar.length - 1 && (
+                                            <span className={`flex-1 h-1.5 ${isDone ? "bg-mainLightBlue" : "bg-mainLightBlueRGB"}`}></span>
+                                        )}
+                                    </span>
+                                );
+                            })}
+                        </span>
 
-                            <p className='text-csNormal font-medium text-mainDarkBlue'>Dữ liệu vẫn có thể được thêm vào nếu thiếu hình ảnh</p>
+                        {/* --- Hiển thị step hiện tại --- */}
+                        <span className="h-fit w-full flex justify-center">
+                            <p className="text-csBig font-bold uppercase">{currentProcess}</p>
                         </span>
                     </div>
 
-                    <div className='flex items-center gap-2.5'>
+                    {/* --- Log --- */}
+                    <div className="h-[300px] bg-lighterGray my-5 rounded-main overflow-auto p-2">
+                        {log.map((entry, idx) => (
+                            <p key={idx} className="text-csNormal font-medium text-gray truncate max-w-full px-2.5 py-1"><b className='text-gray'>Hệ thống:</b> {entry}</p>
+                        ))}
+                    </div>
 
-                        <button
-                            type="button"
-                            onClick={handleClose}
-                            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-400 transition"
-                        >
-                            Hủy
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleAdd}
-                            disabled={!processedSpecies}
-                            className="px-6 py-2 bg-blue-500 text-white font-bold rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-                        >
-                            Thêm loài
-                        </button>
+                    {/* --- Footer --- */}
+                    <div className="flex justify-between items-center">
+                        <span className='flex items-center gap-2 bg-lighterGray px-2.5 py-1.5'>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-5 stroke-mainDark">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                            </svg>
+                            <p className='text-csNormal font-medium text-mainDark'>Chỉ có thể hủy những dữ liệu chưa được thêm</p>
+                        </span>
+
+                        <div className="flex gap-2">
+                            {currentProcess === "Hoàn thành" ? (
+                                <button
+                                    className="text-csNormal text-white font-medium bg-mainDark px-10 py-2 rounded-small"
+                                    onClick={() => { onClose(); resetState() }}
+                                >
+                                    Đóng
+                                </button>
+                            ) : (
+                                <button
+                                    className="text-csNormal text-mainRed font-medium bg-mainRedRGB px-10 py-2 rounded-small"
+                                // onClick={}
+                                >
+                                    Hủy
+                                </button>
+
+                            )}
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
+
+            )
+            }
+
+        </div >
     );
 };
 

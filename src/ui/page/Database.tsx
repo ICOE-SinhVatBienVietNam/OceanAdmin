@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import AddOneSpeciesModal from '../component/AddOneSpeciesModal';
 import AddSpeciesModal from '../component/AddSpeciesModal';
 import SpeciesDetailModal from '../component/SpeciesDetailModal';
+import { RootState } from '../../redux/store';
+import { setNewSpecies } from '../../redux/reducer/speciesReducer';
+import { ProcessedSpecies } from '../component/AddSpeciesModal';
 
 // --- Type Definitions --- //
 export interface Thumbnail {
@@ -62,7 +66,7 @@ export interface SpeciesField {
     sortable?: boolean;
 }
 
-// --- Placeholder Data --- //
+// --- Placeholder Data (for initial load) --- //
 const initialSpeciesData: Species[] = [
     {
         id: '34abdd09-02af-4fe8-83b1-b525c3658de1',
@@ -120,11 +124,23 @@ export const speciesFields: SpeciesField[] = [
 
 // --- Main Component --- //
 const Database: React.FC = () => {
-    const [speciesList, setSpeciesList] = useState<Species[]>(initialSpeciesData);
+    const dispatch = useDispatch();
+    const speciesData = useSelector((state: RootState) => state.speciesReducer.NewSpecies);
+
+    // Augment data from Redux with an ID (using index as a temporary, unstable ID)
+    const allSpecies: Species[] = useMemo(() => {
+        // Ensure speciesData is an array before mapping
+        if (!Array.isArray(speciesData)) {
+            return [];
+        }
+        return speciesData.map((s, index) => ({ ...s, id: index }));
+    }, [speciesData]);
+
+
     const [searchTerm, setSearchTerm] = useState('');
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isAddMultipleOpen, setIsAddMultipleOpen] = useState(false);
-    const [isDeleteMode, setIsDeleteMode] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+    const [isAddMultipleOpen, setIsAddMultipleOpen] = useState<boolean>(false);
+    const [isDeleteMode, setIsDeleteMode] = useState<boolean>(false);
     const [selectedSpeciesIds, setSelectedSpeciesIds] = useState<(string | number)[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
@@ -133,83 +149,57 @@ const Database: React.FC = () => {
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedSpecies, setSelectedSpecies] = useState<Species | null>(null);
 
-    const handleAddSpecies = (newSpeciesData: Omit<Species, 'id'>) => {
-        const newEntry: Species = {
-            id: Date.now().toString(),
-            ...newSpeciesData,
-        };
-        setSpeciesList(prev => [newEntry, ...prev]);
-    };
+    // Load initial data into Redux store
+    useEffect(() => {
+        // We only set the initial data if the store is empty or not an array
+        if (!Array.isArray(speciesData) || speciesData.length === 0) {
+            const dataToLoad = initialSpeciesData.map(({ id, ...rest }) => rest); // Strip ID to match ProcessedSpecies
+            dispatch(setNewSpecies({ data: dataToLoad as ProcessedSpecies[] }));
+        }
+    }, [dispatch, speciesData]);
 
-    const handleAddMultipleSpecies = (newSpecies: Omit<Species, 'id'>[]) => {
-        const newEntries: Species[] = newSpecies.map(s => ({
-            id: Date.now() + Math.random(), // Ensure unique IDs
-            ...s,
-        }));
-        setSpeciesList(prev => [...newEntries, ...prev]);
-    };
 
     const handleDeleteSelected = () => {
-        if (selectedSpeciesIds.length === 0) {
-            alert('Vui lòng chọn ít nhất một loài để xóa.');
-            return;
-        }
-        if (window.confirm(`Bạn có chắc chắn muốn xóa ${selectedSpeciesIds.length} loài đã chọn không?`)) {
-            setSpeciesList(prev => prev.filter(s => !selectedSpeciesIds.includes(s.id)));
-            setSelectedSpeciesIds([]);
-            setIsDeleteMode(false);
-        }
+        // TODO: Implement deletion when a proper delete action is available in the reducer.
+        // This will require species in Redux to have stable IDs.
+        // For now, this function will clear selection.
+        setIsDeleteMode(false);
+        setSelectedSpeciesIds([]);
     };
 
-    // Clean up any object URLs when the main component unmounts or speciesList changes
-    useEffect(() => {
-        setSelectedSpeciesIds([]);
-        setIsDeleteMode(false);
-    }, [speciesList]);
-
-    const filteredSpecies = speciesList.filter(s =>
-        s.species.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.common_names.some(cn => cn.name && cn.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        s.group.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (s.description && s.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (s.characteristic && s.characteristic.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-
-    const sortedSpecies = useMemo(() => {
-        if (!sortColumn) return filteredSpecies;
-
-        return [...filteredSpecies].sort((a, b) => {
-            const aValue = a[sortColumn];
-            const bValue = b[sortColumn];
-
-            if (typeof aValue === 'string' && typeof bValue === 'string') {
-                return sortDirection === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-            }
-            // Fallback for other types or nulls, treat as equal for simplicity
-            return 0;
+    const filteredAndSortedSpecies = useMemo(() => {
+        let filtered = allSpecies.filter(s => {
+            const searchTermLower = searchTerm.toLowerCase();
+            return (
+                s.species.toLowerCase().includes(searchTermLower) ||
+                (s.common_names && s.common_names.some(cn => cn.name?.toLowerCase().includes(searchTermLower))) ||
+                s.group.toLowerCase().includes(searchTermLower) ||
+                s.description?.toLowerCase().includes(searchTermLower)
+            );
         });
-    }, [filteredSpecies, sortColumn, sortDirection]);
+
+        if (sortColumn) {
+            filtered.sort((a, b) => {
+                const aValue = a[sortColumn as keyof Species];
+                const bValue = b[sortColumn as keyof Species];
+
+                if (aValue == null || bValue == null) return 0;
+
+                const comparison = String(aValue).localeCompare(String(bValue), 'vi', { numeric: true });
+                return sortDirection === 'asc' ? comparison : -comparison;
+            });
+        }
+
+        return filtered;
+    }, [allSpecies, searchTerm, sortColumn, sortDirection]);
+
 
     // Pagination calculations
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentSpecies = sortedSpecies.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(sortedSpecies.length / itemsPerPage);
+    const currentSpecies = filteredAndSortedSpecies.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredAndSortedSpecies.length / itemsPerPage);
 
-    const handlePageChange = (pageNumber: number) => {
-        if (pageNumber > 0 && pageNumber <= totalPages) {
-            setCurrentPage(pageNumber);
-            setSelectedSpeciesIds([]); // Clear selection on page change
-        }
-    };
-
-    const goToPreviousPage = () => {
-        handlePageChange(currentPage - 1);
-    };
-
-    const goToNextPage = () => {
-        handlePageChange(currentPage + 1);
-    };
 
     const handleSort = (column: keyof Species) => {
         if (sortColumn === column) {
@@ -221,18 +211,18 @@ const Database: React.FC = () => {
         setCurrentPage(1); // Reset to first page on sort
     };
 
-    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.checked) {
-            setSelectedSpeciesIds(currentSpecies.map(species => species.id));
-        } else {
-            setSelectedSpeciesIds([]);
-        }
-    };
-
     const handleSelectSpecies = (id: string | number) => {
         setSelectedSpeciesIds(prev =>
             prev.includes(id) ? prev.filter(speciesId => speciesId !== id) : [...prev, id]
         );
+    };
+
+    const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.checked) {
+            setSelectedSpeciesIds(currentSpecies.map(s => s.id));
+        } else {
+            setSelectedSpeciesIds([]);
+        }
     };
 
     const handleRowClick = (species: Species) => {
@@ -240,6 +230,10 @@ const Database: React.FC = () => {
             setSelectedSpecies(species);
             setIsDetailModalOpen(true);
         }
+    };
+
+    const goToPage = (pageNumber: number) => {
+        setCurrentPage(Math.max(1, Math.min(totalPages, pageNumber)));
     };
 
     return (
@@ -259,7 +253,8 @@ const Database: React.FC = () => {
                     {isDeleteMode && (
                         <button
                             onClick={handleDeleteSelected}
-                            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300"
+                            disabled={selectedSpeciesIds.length === 0}
+                            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed"
                         >
                             Xóa đã chọn ({selectedSpeciesIds.length})
                         </button>
@@ -269,16 +264,21 @@ const Database: React.FC = () => {
                             setIsDeleteMode(prev => !prev);
                             setSelectedSpeciesIds([]); // Clear selections when toggling delete mode
                         }}
-                        className={`${isDeleteMode ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'} font-bold py-2 px-4 rounded-lg shadow-md transition duration-300`}
+                        className={`${isDeleteMode ? 'bg-yellow-400 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'} font-bold py-2 px-4 rounded-lg shadow-md transition duration-300`}
                     >
                         {isDeleteMode ? 'Hủy xóa' : 'Chọn để xóa'}
                     </button>
-                    <button onClick={() => setIsModalOpen(true)} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
-                        + Thêm loài mới
-                    </button>
-                    <button onClick={() => setIsAddMultipleOpen(true)} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
-                        + Thêm nhiều loài
-                    </button>
+
+                    {!isDeleteMode && (
+                        <>
+                            <button onClick={() => setIsModalOpen(true)} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
+                                + Thêm loài mới
+                            </button>
+                            <button onClick={() => setIsAddMultipleOpen(true)} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
+                                + Thêm nhiều loài
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -288,18 +288,18 @@ const Database: React.FC = () => {
                 <div className='flex items-center justify-between p-2.5'>
                     <div className=''>
                         <span className='flex items-center gap-1.5'>
-                            <p className='text-csNormal'>Tìm thấy <b className='text-mainRed'>{filteredSpecies.length}</b> loài</p>
+                            <p className='text-csNormal'>Tìm thấy <b className='text-mainRed'>{filteredAndSortedSpecies.length}</b> loài</p>
                         </span>
                     </div>
 
                     <div className='flex items-center gap-2'>
                         <span className='text-csNormal'>
-                            Trang {currentPage} / {totalPages}
+                            Trang {currentPage}/{totalPages > 0 ? totalPages : 1}
                         </span>
 
                         <span className='flex items-center gap-1'>
                             <button
-                                onClick={goToPreviousPage}
+                                onClick={() => goToPage(currentPage - 1)}
                                 disabled={currentPage === 1}
                                 className='px-3 py-1 border border-gray-300 rounded-md bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed'
                             >
@@ -308,14 +308,14 @@ const Database: React.FC = () => {
                             <input
                                 type="number"
                                 value={currentPage}
-                                onChange={(e) => handlePageChange(Number(e.target.value))}
+                                onChange={(e) => goToPage(Number(e.target.value))}
                                 className='h-[30px] w-[50px] border-[0.5px] border-lightGray text-csNormal px-2.5 text-center'
                                 min="1"
                                 max={totalPages}
                             />
                             <button
-                                onClick={goToNextPage}
-                                disabled={currentPage === totalPages}
+                                onClick={() => goToPage(currentPage + 1)}
+                                disabled={currentPage === totalPages || totalPages === 0}
                                 className='px-3 py-1 border border-gray-300 rounded-md bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed'
                             >
                                 Sau
@@ -338,10 +338,7 @@ const Database: React.FC = () => {
                                             type="checkbox"
                                             className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
                                             onChange={handleSelectAll}
-                                            checked={
-                                                selectedSpeciesIds.length === currentSpecies.length &&
-                                                currentSpecies.length > 0
-                                            }
+                                            checked={selectedSpeciesIds.length > 0 && selectedSpeciesIds.length === currentSpecies.length}
                                         />
                                     </th>
                                 )}
@@ -371,7 +368,7 @@ const Database: React.FC = () => {
                             {currentSpecies.map((s) => (
                                 <tr
                                     key={s.id}
-                                    className="hover:bg-gray-50 transition-colors duration-200"
+                                    className="hover:bg-gray-50 transition-colors duration-200 cursor-pointer"
                                     onClick={isDeleteMode ? () => handleSelectSpecies(s.id) : () => handleRowClick(s)}
                                 >
                                     {isDeleteMode && (
@@ -384,12 +381,13 @@ const Database: React.FC = () => {
                                                     e.stopPropagation();
                                                     handleSelectSpecies(s.id);
                                                 }}
+                                                onClick={(e) => e.stopPropagation()} // Prevent row click
                                             />
                                         </td>
                                     )}
 
                                     {speciesFields.map((field, index) => {
-                                        const value = s[field.key];
+                                        const value = s[field.key as keyof typeof s];
                                         let cellContent: React.ReactNode;
 
                                         if (Array.isArray(value)) {
@@ -407,7 +405,7 @@ const Database: React.FC = () => {
                                                                     className="w-16 h-10 object-cover rounded-md"
                                                                 />
                                                             ) : (
-                                                                'No image'
+                                                                'Không có hình ảnh'
                                                             );
                                                         break;
                                                     case 'common_names':
@@ -436,7 +434,7 @@ const Database: React.FC = () => {
                                                 cellContent = value.join(', ');
                                             }
                                         } else {
-                                            cellContent = value ?? '--';
+                                            cellContent = (value as React.ReactNode) ?? '--';
                                         }
 
                                         return (
@@ -463,12 +461,10 @@ const Database: React.FC = () => {
             <AddOneSpeciesModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onAdd={handleAddSpecies}
             />
             <AddSpeciesModal
                 isOpen={isAddMultipleOpen}
                 onClose={() => setIsAddMultipleOpen(false)}
-                onAdd={handleAddMultipleSpecies}
             />
             <SpeciesDetailModal
                 isOpen={isDetailModalOpen}
@@ -476,6 +472,7 @@ const Database: React.FC = () => {
                 species={selectedSpecies}
                 speciesFields={speciesFields}
             />
+
         </div>
     );
 };

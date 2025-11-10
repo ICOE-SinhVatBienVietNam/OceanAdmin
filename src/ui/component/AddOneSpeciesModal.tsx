@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { AddOneSpeciesModalProps, speciesFields, Species } from "../page/Database";
+import { useDispatch, useSelector } from "react-redux";
+import { speciesFields, Species } from "../page/Database";
+import { RootState } from "../../redux/store";
+import { setNewSpecies } from "../../redux/reducer/speciesReducer";
+import { ProcessedSpecies } from "./AddSpeciesModal";
+
+export interface AddOneSpeciesModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    // onAdd is removed as the component will dispatch to Redux directly
+}
 
 const initialFormState: Partial<Omit<Species, 'id'>> = {
     species: '',
@@ -22,8 +32,10 @@ const initialFormState: Partial<Omit<Species, 'id'>> = {
     distribution_world: null,
 };
 
-const AddOneSpeciesModal: React.FC<AddOneSpeciesModalProps> = ({ isOpen, onClose, onAdd }) => {
+const AddOneSpeciesModal: React.FC<AddOneSpeciesModalProps> = ({ isOpen, onClose }) => {
     const [newSpecies, setNewSpecies] = useState<Partial<Omit<Species, 'id'>>>(initialFormState);
+    const dispatch = useDispatch();
+    const currentSpeciesList = useSelector((state: RootState) => state.speciesReducer.NewSpecies);
 
     useEffect(() => {
         if (!isOpen) {
@@ -108,7 +120,11 @@ const AddOneSpeciesModal: React.FC<AddOneSpeciesModalProps> = ({ isOpen, onClose
             thumbnails: newSpecies.thumbnails || [],
         };
 
-        onAdd(payload);
+        const currentData = Array.isArray(currentSpeciesList) ? currentSpeciesList : [];
+        const newData = [payload as ProcessedSpecies, ...currentData];
+        // dispatch();
+        // Thêm loài mới
+
         onClose();
     };
 

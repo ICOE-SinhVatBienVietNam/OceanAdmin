@@ -74,8 +74,8 @@ const MainLayout: React.FC = () => {
                     <img src={Logo} className="h-[60%]" />
 
                     <span className="flex gap-1.5 items-center-safe">
-                        {menu.current.find(f => f.content === chosenPage)?.icon}
-                        <h1 className="text-csLarge font-medium">{chosenPage}</h1>
+                        {menu.current.find(f => f.path === pathLocation.pathname)?.icon}
+                        <h1 className="text-csLarge font-medium">{menu.current.find(f => f.path === pathLocation.pathname)?.content}</h1>
                     </span>
                 </span>
 

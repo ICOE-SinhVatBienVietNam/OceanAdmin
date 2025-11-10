@@ -1,5 +1,11 @@
 import * as XLSX from 'xlsx';
 import { Species, Coordinate, Reference, CommonName } from '../ui/page/Database';
+import api from '../config/gateway';
+
+export type SpeciesDataForPost_type = {
+    species: Omit<Species, 'id'>,
+    images: File[]
+}
 
 export class SpeciesService {
     public static async processExcelFile(file: File): Promise<Omit<Species, 'id'>[]> {
@@ -69,7 +75,7 @@ export class SpeciesService {
                         const lat = row['__EMPTY_4'];
                         const lon = row['__EMPTY_5'];
                         if (lat != null && lon != null && String(lat).trim() !== '' && String(lon).trim() !== '') {
-                            const newCoord: Coordinate = { latitude: String(lat).trim(), longitude: String(lon).trim() };
+                            const newCoord: Coordinate = { latitude: String(lat).trim().replace("°", ""), longitude: String(lon).trim().replace("°", "") };
                             if (!speciesEntry.species_coordinates.some(c => c.latitude === newCoord.latitude && c.longitude === newCoord.longitude)) {
                                 speciesEntry.species_coordinates.push(newCoord);
                             }
@@ -86,7 +92,7 @@ export class SpeciesService {
                     }
 
                     const result = Array.from(speciesMap.values());
-                    console.log('FINAL PROCESSED DATA:', result);
+                    // console.log('FINAL PROCESSED DATA:', result);
                     resolve(result);
 
                 } catch (error) {
@@ -101,6 +107,51 @@ export class SpeciesService {
             };
 
             reader.readAsArrayBuffer(file);
+        });
+    }
+
+    addOneSpeciesData() {
+
+    }
+
+    public static async addSpeciesData(speciesData: SpeciesDataForPost_type[]): Promise<any> {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const formData = new FormData();
+                const imageCounts: number[] = [];
+
+                speciesData.forEach(item => {
+                    formData.append('speciesInfo', JSON.stringify(item.species));
+                    let count = 0;
+                    if (item.images && item.images.length > 0) {
+                        item.images.forEach(imageFile => {
+                            formData.append('speciesImg', imageFile);
+                            count++;
+                        });
+                    }
+                    imageCounts.push(count);
+                });
+
+                imageCounts.forEach(count => {
+                    formData.append('imageCounts', String(count));
+                });
+
+                // SỬA Ở ĐÂY: Thêm cấu hình headers
+                const result = await api.post(
+                    "/species/add-multi-species",
+                    formData,
+                    {
+                        headers: {
+                            'Content-Type': 'multipart/form-data',
+                        },
+                    }
+                );
+
+                resolve(result.data);
+
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 }
