@@ -11,13 +11,16 @@ import Logo from '../../assets/SinhVatBienVN.png'
 import Overview from "../page/Overview"
 import Collaborator from "../page/Collaborator"
 import Database from "../page/Database"
+import { Auth } from "../component/Auth"
+import UserPage from "../page/User"
+import QuestionPage from "../page/Question"
+import ContributionPage from "../page/Contribution"
 
 const MainLayout: React.FC = () => {
     // Location
     const pathLocation = useLocation()
 
     // Menu
-    const [chosenPage, setChosenPage] = useState<string>("Tổng quan")
     const menu = useRef<{ content: string, icon: ReactNode, path: string }[]>([
         {
             content: "Tổng quan",
@@ -68,61 +71,66 @@ const MainLayout: React.FC = () => {
     ])
 
     return (
-        <div className="h-full w-full flex flex-col">
-            <div className="h-[60px] flex justify-between items-center px-2.5 border-b-[0.5px] border-lightGray">
-                <span className="h-full flex gap-5 items-center-safe">
-                    <img src={Logo} className="h-[60%]" />
+        <>
+            <Auth />
+            <div className="h-full w-full flex flex-col">
+                <div className="h-[60px] flex justify-between items-center px-2.5 border-b-[0.5px] border-lightGray">
+                    <span className="h-full flex gap-5 items-center-safe">
+                        <img src={Logo} className="h-[60%]" />
 
-                    <span className="flex gap-1.5 items-center-safe">
-                        {menu.current.find(f => f.path === pathLocation.pathname)?.icon}
-                        <h1 className="text-csLarge font-medium">{menu.current.find(f => f.path === pathLocation.pathname)?.content}</h1>
+                        <span className="flex gap-1.5 items-center-safe">
+                            {menu.current.find(f => f.path === pathLocation.pathname)?.icon}
+                            <h1 className="text-csLarge font-medium">{menu.current.find(f => f.path === pathLocation.pathname)?.content}</h1>
+                        </span>
                     </span>
-                </span>
 
-                <span className="h-full flex items-center-safe">
-                    <p className="flex items-center gap-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-5">
-                            <path d="M1.5 8.67v8.58a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3V8.67l-8.928 5.493a3 3 0 0 1-3.144 0L1.5 8.67Z" />
-                            <path d="M22.5 6.908V6.75a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3v.158l9.714 5.978a1.5 1.5 0 0 0 1.572 0L22.5 6.908Z" />
-                        </svg>
+                    <span className="h-full flex items-center-safe">
+                        <p className="flex items-center gap-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-5">
+                                <path d="M1.5 8.67v8.58a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3V8.67l-8.928 5.493a3 3 0 0 1-3.144 0L1.5 8.67Z" />
+                                <path d="M22.5 6.908V6.75a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3v.158l9.714 5.978a1.5 1.5 0 0 0 1.572 0L22.5 6.908Z" />
+                            </svg>
 
-                        duytran.290804@gmail.com
-                    </p>
-                </span>
-            </div>
-
-            <div className="relative flex-1 w-full flex items-center">
-                {/* Menu */}
-                <div className="sticky top-0 left-0 w-[60px] h-full flex flex-col gap-5 border-r-[0.5px] border-lightGray p-2.5">
-                    {menu.current.map((page, i) => {
-                        return (
-                            <Link
-                                to={page.path}
-                                key={i}
-                                onClick={() => { setChosenPage(page.content) }}
-                                className={`group hover:cursor-grab relative w-full aspect-square flex justify-center items-center ${pathLocation.pathname === page.path && "bg-lighterGray"} rounded-small`}
-                            >
-                                {page.icon}
-
-                                <p className="group-hover:block hidden absolute z-5000 left-[calc(100%+10px)] before:content-[''] before:absolute before:top-1/2 before:-left-2 before:-translate-y-1/2 before:border-y-6 before:border-y-transparent before:border-r-8 before:border-r-mainDark text-nowrap bg-mainDark text-white font-medium text-csNormal px-3.5 py-1 rounded-small">
-                                    {page.content}
-                                </p>
-                            </Link>
-                        )
-                    })}
-
+                            duytran.290804@gmail.com
+                        </p>
+                    </span>
                 </div>
 
-                {/* Routing */}
-                <div className="flex-1 h-full overflow-hidden">
-                    <Routes>
-                        <Route index Component={Overview} />
-                        <Route path={routeConfig.collaborator.root} Component={Collaborator} />
-                        <Route path={routeConfig.database.root} Component={Database} />
-                    </Routes>
+                <div className="relative flex-1 w-full flex items-center">
+                    {/* Menu */}
+                    <div className="sticky top-0 left-0 w-[60px] h-full flex flex-col gap-5 border-r-[0.5px] border-lightGray p-2.5">
+                        {menu.current.map((page, i) => {
+                            return (
+                                <Link
+                                    to={page.path}
+                                    key={i}
+                                    className={`group hover:cursor-grab relative w-full aspect-square flex justify-center items-center ${pathLocation.pathname === page.path && "bg-lighterGray"} rounded-small`}
+                                >
+                                    {page.icon}
+
+                                    <p className="group-hover:block hidden absolute z-5000 left-[calc(100%+10px)] before:content-[''] before:absolute before:top-1/2 before:-left-2 before:-translate-y-1/2 before:border-y-6 before:border-y-transparent before:border-r-8 before:border-r-mainDark text-nowrap bg-mainDark text-white font-medium text-csNormal px-3.5 py-1 rounded-small">
+                                        {page.content}
+                                    </p>
+                                </Link>
+                            )
+                        })}
+
+                    </div>
+
+                    {/* Routing */}
+                    <div className="flex-1 h-full overflow-hidden">
+                        <Routes>
+                            <Route index Component={Overview} />
+                            <Route path={routeConfig.collaborator.root} Component={Collaborator} />
+                            <Route path={routeConfig.database.root} Component={Database} />
+                            <Route path={routeConfig.user.root} Component={UserPage} />
+                            <Route path={routeConfig.question.root} Component={QuestionPage} />
+                            <Route path={routeConfig.contribution.root} Component={ContributionPage} />
+                        </Routes>
+                    </div>
                 </div>
             </div>
-        </div>
+        </>
     )
 }
 

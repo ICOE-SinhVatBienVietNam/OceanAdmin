@@ -2,10 +2,12 @@ import { configureStore } from '@reduxjs/toolkit'
 
 // Reducer
 import speciesReducer from './reducer/speciesReducer'
+import adminReducer from './reducer/adminReducer'
 
 export const store = configureStore({
     reducer: {
-        speciesReducer
+        speciesReducer,
+        adminReducer
     }
 })
 

@@ -1,17 +1,27 @@
 import React from "react"
+import { useNavigate } from "react-router-dom";
 
 // Image
 import Pattern from '../../assets/Pattern.png'
 import SinhVatBienVN from '../../assets/SinhVatBienVN.png'
 
+// Service
+import { AuthService } from "../../service/AuthService";
+
+// Config
+import { routeConfig } from "../../config/routeConfig";
+
 const LoginPage: React.FC = () => {
+    const navigate = useNavigate()
+
     const [email, setEmail] = React.useState('');
     const [password, setPassword] = React.useState('');
 
-    const handleLogin = (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        // Logic
+    const handleLogin = async () => {
+        const isLoggedIn = await AuthService.signin(email, password)
+        if (isLoggedIn) {
+            navigate(routeConfig.layout.main + routeConfig.database.root)
+        }
     };
 
     return (
@@ -25,7 +35,7 @@ const LoginPage: React.FC = () => {
                     <p className="text-csMedium font-medium text-gray">Vui lòng điền đầy đủ thông tin</p>
                 </div>
 
-                <form className="flex flex-col gap-y-5" onSubmit={handleLogin}>
+                <div className="flex flex-col gap-y-5">
                     <div>
                         <label htmlFor="email" className="block text-gray-700 text-sm font-semibold mb-2">
                             Địa chỉ Email
@@ -56,14 +66,15 @@ const LoginPage: React.FC = () => {
                     </div>
                     <div className="flex items-center justify-between">
                         <button
-                            type="submit"
-                            className="w-full bg-linear-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transform transition duration-300 ease-in-out hover:scale-105"
+                            onClick={handleLogin}
+                            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transform transition duration-300 ease-in-out hover:scale-105"
                         >
                             Đăng nhập
                         </button>
                     </div>
-                </form>
+                </div>
             </div>
+
             <div className="absolute bottom-4 right-4 text-white text-sm">
                 Copyright © 2025 Bản quyền thuộc về Nhóm Sinh vật biển Việt Nam
             </div>

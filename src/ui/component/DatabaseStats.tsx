@@ -3,7 +3,7 @@ import React from 'react';
 // --- Reusable Components --- //
 
 const ServiceSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-    <div className="bg-white p-6 rounded-lg shadow-md">
+    <div className="bg-white p-6 rounded-lg mainShadow">
         <h3 className="text-xl font-semibold text-gray-800 mb-4">{title}</h3>
         {children}
     </div>
