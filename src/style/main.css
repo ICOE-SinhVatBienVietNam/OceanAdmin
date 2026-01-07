@@ -36,10 +36,10 @@
         z-index: 999999 !important;
         gap: 5px;
     }
-    
+
     /* ====== Toast Box ====== */
     .Toastify__toast {
-        width: 80% !important;
+        width: 100% !important;
         font-size: 15px !important;
     }
 
@@ -87,13 +87,13 @@
 
 @theme {
     --color-light-background: ;
-    --color-mainRed: #FF4040;
+    --color-mainRed: #ff4040;
     --color-mainRedRGB: rgba(255, 64, 64, 0.2);
-    --color-mainLightBlue: #35A8F6;
+    --color-mainLightBlue: #35a8f6;
     --color-mainLightBlueRGB: rgba(53, 168, 246, 0.2);
-    --color-mainDarkBlue: #0B5394;
+    --color-mainDarkBlue: #0b5394;
     --color-mainDark: #3e3f46;
-    --color-lime: #00FF00;
+    --color-lime: #00ff00;
     --color-gray: #808080;
     --color-lightGray: #d3d3d3;
     --color-lighterGray: #f0f0f0;
