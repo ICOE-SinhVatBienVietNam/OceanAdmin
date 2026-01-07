@@ -76,10 +76,12 @@ export class SpeciesService {
     sort_by: "DESC" | "ASC",
     signal?: AbortSignal,
   ) {
-    toastConfig({
-      toastType: "info",
-      toastMessage: "Đang tải dữ liệu",
-    });
+
+    let pending = toastConfig({
+      pending: true,
+      toastMessage: "Đang tải dữ liệu"
+    })
+
     try {
       const { data, status } = await api.get("/species/get-all", {
         params: {
@@ -103,7 +105,12 @@ export class SpeciesService {
         };
 
         store.dispatch(setPaginationData(speciesDataPagination.data));
-        store.dispatch(setPagination(speciesDataPagination.pagination));
+        store.dispatch(
+          setPagination({
+            ...speciesDataPagination.pagination,
+            page: page,
+          }),
+        );
         return true;
       }
 
@@ -117,6 +124,8 @@ export class SpeciesService {
       });
       console.error("Error fetching species data:", error);
       return false;
+    } finally{
+      toast.dismiss(pending)
     }
   }
 

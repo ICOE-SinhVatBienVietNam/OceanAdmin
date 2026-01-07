@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "../../redux/store";
-import { cloudinaryRoot } from "../../config/gateway";
+import { cloudinaryRoot, cloudinaryThumbnail } from "../../config/gateway";
 
 // Lightbox component for displaying a single image with zoom and pan
 const ImageLightbox: React.FC<{
@@ -170,8 +170,8 @@ const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
                     {speciesDetail.thumbnails.map((thumb, index) => (
                       <img
                         key={index}
-                        src={cloudinaryRoot + thumb.thumbnail}
-                        alt={`Thumbnail ${index + 1}`}
+                        src={cloudinaryThumbnail + thumb.thumbnail}
+                        alt={`${speciesDetail.species} ${index + 1}`}
                         className="w-32 h-32 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500 transition-all cursor-pointer"
                         onClick={() => setSelectedImage(thumb.thumbnail)}
                       />
