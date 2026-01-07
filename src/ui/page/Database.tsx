@@ -118,6 +118,8 @@ export const speciesFields: SpeciesField[] = [
 const Database: React.FC = () => {
   const dispatch = useDispatch();
 
+  const isAuth = useSelector((state: RootState) => state.adminReducer.isAuth)
+
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isAddMultipleOpen, setIsAddMultipleOpen] = useState<boolean>(false);
   const [isDeleteMode, setIsDeleteMode] = useState<boolean>(false);
@@ -157,6 +159,7 @@ const Database: React.FC = () => {
 
   // Pagination
   useEffect(() => {
+    if (!isAuth) return
     const abortController = new AbortController();
     (async () => {
       await SpeciesService.getAllSpecies(
@@ -171,7 +174,7 @@ const Database: React.FC = () => {
     return () => {
       abortController.abort();
     };
-  }, [dispatch, debounceSearch, pageNumber]);
+  }, [dispatch, debounceSearch, pageNumber, isAuth]);
 
   // Handler
 
@@ -195,7 +198,7 @@ const Database: React.FC = () => {
 
   const nextPage = () => {
     if (pageNumber < totalPages) {
-      dispatch(setPage(pageNumber + 1));
+      setChangePageValue(pageNumber + 1);
     }
   };
 
@@ -205,7 +208,7 @@ const Database: React.FC = () => {
 
   const backPage = () => {
     if (pageNumber > 1) {
-      dispatch(setPage(pageNumber - 1));
+      setChangePageValue(pageNumber - 1);
     }
   };
 
@@ -279,13 +282,14 @@ const Database: React.FC = () => {
           <div className="">
             <span className="flex items-center gap-1.5">
               <p className="text-csNormal">
-                Tìm thấy <b className="text-mainRed">{total}</b> loài
+                {!debounceSearch ? "Dữ liệu " : "Tìm thấy "}
+                <b className="text-mainRed">{total}</b> loài
               </p>
             </span>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-csNormal">Trang 1</span>
+            <span className="text-csNormal">Trang {pageNumber}</span>
 
             <span className="flex items-center gap-1">
               <button
@@ -298,7 +302,7 @@ const Database: React.FC = () => {
               <input
                 type="number"
                 className="h-[30px] w-[50px] border-[0.5px] border-lightGray text-csNormal px-2.5 text-center"
-                value={changePageValue}
+                value={pageNumber}
                 onChange={(e) => {
                   if (
                     Number(e.target.value) < 1 ||
