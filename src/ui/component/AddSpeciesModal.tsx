@@ -4,7 +4,6 @@ import {
   SpeciesService,
 } from "../../service/SpeciesService";
 import { Species, Thumbnail } from "../page/Database";
-import { useDispatch } from "react-redux";
 import { toastConfig } from "../../config/toastConfig";
 import { toast } from "react-toastify";
 
@@ -43,9 +42,6 @@ const AddSpeciesModal: React.FC<AddSpeciesModalProps> = ({
   >([]);
   const [imgFolderName, setImgFolderName] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
-
-  // Redux
-  const dispatch = useDispatch();
 
   const resetState = () => {
     setProcessedSpecies(null);
@@ -545,7 +541,7 @@ const AddSpeciesModal: React.FC<AddSpeciesModalProps> = ({
           {/* --- Progress Bar --- */}
           <div className="flex flex-col gap-5 mb-4">
             <span className="flex items-center">
-              {processBar.map((step, index) => {
+              {processBar.map((_, index) => {
                 const isDone = index < processBar.indexOf(currentProcess);
                 const isCurrent = index === processBar.indexOf(currentProcess);
                 return (
