@@ -31,8 +31,8 @@ export type SpeciesData = {
   class: string | null;
   order: string | null;
   family: string | null;
-  genus: string | null;
-  species: string | null;
+  genus: string;
+  species: string;
   threatened_symbol: string | null;
   impact: string | null;
   description: string | null;
@@ -42,10 +42,10 @@ export type SpeciesData = {
   distribution_world: string | null;
   created_at: string;
   updated_at: string;
-  common_names: null | Common_names[];
+  common_names: [] | Common_names[];
   species_coordinates: Species_coordinates[];
-  references: null | References[];
-  thumbnails: null | Thumbnails[];
+  references: [] | References[];
+  thumbnails: [] | Thumbnails[];
 };
 
 export interface SpeciesState {
@@ -131,6 +131,11 @@ export const speciesSlice = createSlice({
         state.data[index] = action.payload;
       }
     },
+
+    setDetailSpecies: (state, action: PayloadAction<SpeciesData>) => {
+      if (!action.payload) return;
+      state.speciesDetail = action.payload;
+    },
   },
 });
 
@@ -146,6 +151,7 @@ export const {
   addNewSpecies,
   removeSpecies,
   updateSpecies,
+  setDetailSpecies,
 } = speciesSlice.actions;
 
 export default speciesSlice.reducer;

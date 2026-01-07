@@ -6,7 +6,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { SpeciesService } from "../../service/SpeciesService";
 import { RootState } from "../../redux/store";
 import { useDebounce } from "../../hooks/Debounce";
-import { setPage, SpeciesData } from "../../redux/reducer/speciesReducer";
+import {
+  setDetailSpecies,
+  setPage,
+  SpeciesData,
+} from "../../redux/reducer/speciesReducer";
 
 // --- Type Definitions --- //
 export interface Thumbnail {
@@ -44,7 +48,7 @@ export interface Species {
   habitas: string | null | null;
   distribution_vietnam: string | null;
   distribution_world: string | null;
-  coordinates: Coordinate[];
+  species_coordinates: Coordinate[];
   common_names: CommonName[];
   references: Reference[];
   thumbnails: Thumbnail[];
@@ -91,7 +95,7 @@ export const speciesFields: SpeciesField[] = [
   { key: "distribution_vietnam", label: "Phân bố Việt Nam", width: "w-64" },
   { key: "distribution_world", label: "Phân bố thế giới", width: "w-64" },
   {
-    key: "coordinates",
+    key: "species_coordinates",
     label: "Tọa độ",
     width: "w-64",
     isObjectArray: "coordinates",
@@ -193,8 +197,6 @@ const Database: React.FC = () => {
     });
   };
 
-  const handleRowClick = (species: SpeciesData) => {};
-
   const nextPage = () => {
     if (pageNumber < totalPages) {
       dispatch(setPage(pageNumber + 1));
@@ -209,6 +211,17 @@ const Database: React.FC = () => {
     if (pageNumber > 1) {
       dispatch(setPage(pageNumber - 1));
     }
+  };
+
+  // Detail modal
+  const [isDetail, setIsDetail] = useState<boolean>(false);
+  const handleRowClick = (species: SpeciesData) => {
+    dispatch(setDetailSpecies(species));
+    toggleDetailModal();
+  };
+
+  const toggleDetailModal = () => {
+    setIsDetail(!isDetail);
   };
 
   return (
@@ -348,7 +361,7 @@ const Database: React.FC = () => {
 
             <tbody className="divide-y divide-gray-200">
               {paginationData &&
-                paginationData.map((item, index) => {
+                paginationData.map((item) => {
                   return (
                     <tr
                       className="hover:bg-gray-50 transition-colors duration-200 cursor-pointer"
@@ -411,7 +424,7 @@ const Database: React.FC = () => {
                                     return `Có ${
                                       (value as Thumbnail[]).length
                                     } ảnh`;
-                                  case "coordinates":
+                                  case "species_coordinates":
                                     return `Có ${
                                       (value as Coordinate[]).length
                                     } tọa độ`;
@@ -455,12 +468,7 @@ const Database: React.FC = () => {
         isOpen={isAddMultipleOpen}
         onClose={() => setIsAddMultipleOpen(false)}
       />
-      {/*<SpeciesDetailModal
-        isOpen={isDetailModalOpen}
-        onClose={() => setIsDetailModalOpen(false)}
-        species={selectedSpecies}
-        speciesFields={speciesFields}
-      />*/}
+      {isDetail && <SpeciesDetailModal toggleModal={toggleDetailModal} />}
     </div>
   );
 };

@@ -272,7 +272,7 @@ export class SpeciesService {
                 distribution_vietnam: row["__EMPTY_1"] || null, // From log
                 distribution_world: row["__EMPTY_2"] || null, // From log
                 common_names: [],
-                coordinates: [],
+                species_coordinates: [],
                 references: [],
                 thumbnails: [],
               };
@@ -313,13 +313,13 @@ export class SpeciesService {
                 longitude: String(lon).trim().replace("°", ""),
               };
               if (
-                !speciesEntry.coordinates.some(
+                !speciesEntry.species_coordinates.some(
                   (c) =>
                     c.latitude === newCoord.latitude &&
                     c.longitude === newCoord.longitude,
                 )
               ) {
-                speciesEntry.coordinates.push(newCoord);
+                speciesEntry.species_coordinates.push(newCoord);
               }
             }
 
