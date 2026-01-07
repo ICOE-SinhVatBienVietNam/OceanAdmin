@@ -121,7 +121,6 @@ const Database: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isAddMultipleOpen, setIsAddMultipleOpen] = useState<boolean>(false);
   const [isDeleteMode, setIsDeleteMode] = useState<boolean>(false);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const [search, setSearch] = useState<string>("");
   const [changePageValue, setChangePageValue] = useState<number>(1);
@@ -143,9 +142,6 @@ const Database: React.FC = () => {
   );
 
   const [selectedSpeciesIds, setSelectedSpeciesIds] = useState<string[]>([]);
-  const [selectedSpecies, setSelectedSpecies] = useState<SpeciesData | null>(
-    null,
-  );
 
   const deleteSpecies = async () => {
     await SpeciesService.deleteMultipleSpecies(selectedSpeciesIds);

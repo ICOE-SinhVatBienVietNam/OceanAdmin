@@ -163,7 +163,7 @@ export class SpeciesService {
     }
 
     try {
-      const { data, status } = await api.post("/species/add-one", speciesData);
+      const { status } = await api.post("/species/add-one", speciesData);
       if (status === 200 || status === 201) {
         // return data as SpeciesData;
         return true;
